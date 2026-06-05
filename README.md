@@ -7,6 +7,35 @@ instructions, and push it to your Thermomix — all without leaving the chat.
 
 Runs locally as a stdio subprocess launched by Claude Desktop. No hosting needed.
 
+## Demo
+
+<!-- 📹 Drop a screen recording here once you have one. See assets/README.md.
+     Then uncomment:  ![Fridge to Thermomix](assets/demo.gif)  -->
+
+A typical fridge-to-Thermomix conversation in Claude Desktop:
+
+> **You:** I've got chicken, zucchini and cream in the fridge — what can I make?
+>
+> **Claude:** *(search_recipes_by_ingredients)* Here are a few:
+> 1. Creamy Asparagus, Potato and Leek Soup — 30 min, easy
+> 2. Chicken with creamy vegetable sauce — 50 min, medium
+> 3. Fruit Ice Cream — 5 min, easy
+>
+> **You:** Show me the soup.
+>
+> **Claude:** *(get_recipe)*
+> **Creamy Asparagus, Potato and Leek Soup** · 30 min · serves 4
+> *Ingredients:* 30 g olive oil · 120 g onions · 250 g leeks · 200 g potatoes · 400 g green asparagus · …
+> *Steps:*
+> 1. Place oil, onions, leeks and potatoes in mixing bowl then chop 5 sec/speed 5. Sauté 5 min/120°C/speed 1.
+> 2. Add thyme, marjoram and asparagus then cook 6 min/100°C/speed 1. Blend 1 min/speed 9.
+> 3. Add water, stock, salt, pepper then cook 10 min/100°C/speed 1. …
+>
+> **You:** Perfect, send it to my Thermomix.
+>
+> **Claude:** *(save_recipe_to_thermomix)* Saved to your "From Claude" collection on
+> Cookidoo. Open My Recipes → Collections on your Thermomix to cook it.
+
 ## Tools
 
 | Tool | What it does | Login? |
