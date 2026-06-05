@@ -1,0 +1,13 @@
+# Credentials & session — MUST never be committed
+.env
+.cookies
+
+# Python
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# macOS
+.DS_Store

@@ -1,0 +1,5 @@
+fastmcp>=3.0
+python-dotenv>=1.0
+# Search-by-ingredients is only on the cookidoo-api master branch (not yet in a
+# PyPI release as of 0.17.2). Pin to git until a release ships search_recipes.
+cookidoo-api @ git+https://github.com/miaucl/cookidoo-api.git@master
