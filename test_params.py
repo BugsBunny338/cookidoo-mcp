@@ -36,7 +36,7 @@ def test_optional_params_included_and_named_for_api():
         exclude_ingredients=["milk"],
         languages=["en", "cs"],
         difficulty="easy",
-        page_size=5,
+        limit=5,
     )
     d = {}
     for k, v in pairs:
@@ -45,7 +45,7 @@ def test_optional_params_included_and_named_for_api():
     assert d["excludeIngredients"] == ["milk"]
     assert d["languages"] == ["en", "cs"]  # repeated, not "en,cs"
     assert d["difficulty"] == ["easy"]
-    assert d["pageSize"] == ["5"]
+    assert d["limit"] == ["5"]  # the API ignores pageSize
 
 
 def test_empty_inputs_produce_no_pairs():

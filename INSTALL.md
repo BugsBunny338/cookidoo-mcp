@@ -13,7 +13,7 @@ to your Thermomix — all from a chat.
 ## Prerequisites (one-time)
 
 1. **Claude Desktop** — https://claude.ai/download
-2. **Python 3.11 or newer** — https://www.python.org/downloads/
+2. **Python 3.12 or newer** — https://www.python.org/downloads/
    (macOS: `python3 --version` to check.)
 
 ## Install (macOS / Linux)

@@ -14,6 +14,7 @@ Auth model (verified empirically against the API):
 from __future__ import annotations
 
 import html as _html
+import json
 import os
 import re
 from contextlib import asynccontextmanager
@@ -34,16 +35,16 @@ except Exception:
 
 from cookidoo_api import (
     Cookidoo,
+    CookidooAuthData,
     CookidooAuthException,
     CookidooConfig,
     CookidooSearchResult,
     get_localization_options,
 )
-from cookidoo_api.const import RECIPE_PATH
 from cookidoo_api.helpers import cookidoo_search_result_from_json
 
-# Cache for the authenticated session cookies (only used by account-write paths).
-COOKIE_FILE = Path(__file__).resolve().parent / ".cookies"
+# Cache for the OAuth2 tokens (only used by account-write paths).
+AUTH_FILE = Path(__file__).resolve().parent / ".auth.json"
 
 
 # --------------------------------------------------------------------------- #
@@ -149,7 +150,7 @@ def build_search_pairs(
     exclude_ingredients: list[str] | None = None,
     languages: list[str] | None = None,
     difficulty: str | None = None,
-    page_size: int | None = None,
+    limit: int | None = None,
     tmv: str | None = None,
 ) -> list[tuple[str, str]]:
     """Build search query params as a list of (key, value) pairs.
@@ -158,7 +159,8 @@ def build_search_pairs(
     the whole point of bypassing cookidoo-api's ``search_recipes``, which instead
     comma-joins list values (``ingredients=a,b``) -- the Cookidoo API reads that as
     one ingredient literally named "a,b" and returns nothing. Keys match the API's
-    expected names (e.g. camelCase ``excludeIngredients``, ``pageSize``).
+    expected names (e.g. camelCase ``excludeIngredients``). Result count is
+    ``limit``: the API silently ignores ``pageSize`` and returns 20 hits.
     """
     pairs: list[tuple[str, str]] = []
     if query:
@@ -174,8 +176,8 @@ def build_search_pairs(
             pairs.append(("languages", lang.strip()))
     if difficulty:
         pairs.append(("difficulty", difficulty))
-    if page_size:
-        pairs.append(("pageSize", str(page_size)))
+    if limit:
+        pairs.append(("limit", str(limit)))
     if tmv:
         pairs.append(("tmv", tmv))
     return pairs
@@ -189,13 +191,15 @@ async def _raw_search(
     Goes through the library's ``_request_json`` (so headers and error wrapping
     apply) but pre-builds the URL query so list params are repeated rather than
     comma-joined. Touches a couple of private attributes; acceptable because we
-    pin cookidoo-api to a specific git commit.
+    pin cookidoo-api to an exact release.
     """
-    url = (client.api_endpoint / "search" / locale).with_query(pairs)
+    await client._ensure_endpoints()
+    path = client._path("search:home").format(locale=locale)
+    url = (client.api_endpoint / path).with_query(pairs)
     result = await client._request_json("get", url, "search recipes")
     if not isinstance(result, dict):
         return CookidooSearchResult(recipes=[], total=0)
-    return cookidoo_search_result_from_json(result, client._cfg.localization)
+    return cookidoo_search_result_from_json(result, client.localization)
 
 
 def _to_minutes(seconds: int | None) -> int | None:
@@ -234,13 +238,13 @@ async def search_recipes_by_ingredients(
         cooking times -- the search hit itself carries only name + URL.
     """
     async with cookidoo_session() as client:
-        locale = language or client._cfg.localization.language.split("-")[0]
+        locale = language or client.localization.language.split("-")[0]
         pairs = build_search_pairs(
             query=query,
             ingredients=ingredients,
             languages=[language] if language else None,
             difficulty=difficulty,
-            page_size=max_results,
+            limit=max_results,
         )
         result = await _raw_search(client, locale=locale, pairs=pairs)
 
@@ -304,8 +308,12 @@ async def get_full_recipe(recipe_id: str, *, language: str | None = None) -> Rec
     language regardless).
     """
     async with cookidoo_session() as client:
-        lang = language or client._cfg.localization.language
-        url = client.api_endpoint / RECIPE_PATH.format(language=lang, id=recipe_id)
+        await client._ensure_endpoints()
+        path = client._path("recipe:details")
+        account_lang = client.localization.language
+        url = client.api_endpoint / path.format(
+            language=language or account_lang, id=recipe_id
+        )
         raw = await client._request_json("get", url, "recipe details")
         if not isinstance(raw, dict) or not raw.get("title"):
             raise RuntimeError(f"Recipe '{recipe_id}' not found.")
@@ -332,10 +340,7 @@ async def get_full_recipe(recipe_id: str, *, language: str | None = None) -> Rec
         serving = (raw.get("servingSize") or {}).get("quantity", {}).get("value")
         times = raw.get("times", [])
         web_url = str(
-            client.api_endpoint
-            / RECIPE_PATH.format(
-                language=client._cfg.localization.language, id=recipe_id
-            )
+            client.api_endpoint / path.format(language=account_lang, id=recipe_id)
         )
         return RecipeFull(
             id=recipe_id,
@@ -366,19 +371,28 @@ async def get_full_recipe(recipe_id: str, *, language: str | None = None) -> Rec
 DEFAULT_COLLECTION = "From Claude"
 
 
+def _save_auth(auth: CookidooAuthData) -> None:
+    try:
+        AUTH_FILE.write_text(json.dumps(vars(auth)))
+        AUTH_FILE.chmod(0o600)
+    except Exception:
+        pass
+
+
 async def _ensure_login(client: Cookidoo) -> None:
-    """Make the client authenticated, reusing cached cookies when possible."""
-    if COOKIE_FILE.exists():
+    """Make the client authenticated, reusing cached tokens when possible.
+
+    The library refreshes an expired access token on its own and rotates the
+    refresh token when it does, so persist every update via the callback.
+    """
+    client.on_auth_data_update = _save_auth
+    if AUTH_FILE.exists():
         try:
-            client.load_cookies(COOKIE_FILE)
+            client.apply_auth_data(CookidooAuthData(**json.loads(AUTH_FILE.read_text())))
+            return
         except Exception:
             pass
-    if not getattr(client, "_logged_in", False):
-        await client.login()
-        try:
-            client.save_cookies(COOKIE_FILE)
-        except Exception:
-            pass
+    await client.login()
 
 
 def _collection_recipe_ids(collection: object) -> set[str]:
@@ -428,10 +442,6 @@ async def save_recipe_to_account(
         try:
             return await op()
         except CookidooAuthException:
-            # Cached cookies expired -- log in fresh and retry once.
+            # Cached tokens no longer valid -- log in fresh and retry once.
             await client.login()
-            try:
-                client.save_cookies(COOKIE_FILE)
-            except Exception:
-                pass
             return await op()

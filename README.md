@@ -50,8 +50,7 @@ read recipes**. Only saving a recipe to your account requires your Cookidoo logi
 > **Note:** This builds on the unofficial, reverse-engineered
 > [`cookidoo-api`](https://github.com/miaucl/cookidoo-api) library and is for
 > personal use. Saving to your account needs an account with an active
-> subscription. Search-by-ingredients currently lives only on that library's
-> `master` branch (not yet in a PyPI release), so we install it from git.
+> subscription. Requires Python 3.12+ (cookidoo-api 0.19).
 
 ## Install (one command)
 
@@ -131,7 +130,7 @@ catalog for that region.
 - `server.py` — thin FastMCP adapter exposing the tools over stdio.
 - `test_*.py` — live integration tests and deterministic unit tests.
 
-`.env` and `.cookies` are gitignored and must never be committed.
+`.env` and `.auth.json` (cached login tokens) are gitignored and must never be committed.
 
 ## Authors
 

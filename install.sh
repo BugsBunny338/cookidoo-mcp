@@ -11,15 +11,15 @@ cd "$(dirname "$0")"
 
 echo "==> Cookidoo MCP installer"
 
-# --- 1. Python 3.11+ -------------------------------------------------------- #
+# --- 1. Python 3.12+ -------------------------------------------------------- #
 if ! command -v python3 >/dev/null 2>&1; then
-  echo "! Python 3 not found. Install Python 3.11+ from https://www.python.org/downloads/ and re-run."
+  echo "! Python 3 not found. Install Python 3.12+ from https://www.python.org/downloads/ and re-run."
   exit 1
 fi
 PYV=$(python3 -c 'import sys; print("%d.%d" % sys.version_info[:2])')
 PYMAJOR=${PYV%%.*}; PYMINOR=${PYV##*.}
-if [ "$PYMAJOR" -lt 3 ] || { [ "$PYMAJOR" -eq 3 ] && [ "$PYMINOR" -lt 11 ]; }; then
-  echo "! Python $PYV found, but 3.11+ is required. Please upgrade and re-run."
+if [ "$PYMAJOR" -lt 3 ] || { [ "$PYMAJOR" -eq 3 ] && [ "$PYMINOR" -lt 12 ]; }; then
+  echo "! Python $PYV found, but 3.12+ is required. Please upgrade and re-run."
   exit 1
 fi
 echo "  Python $PYV OK"

@@ -1,5 +1,6 @@
 # Credentials & session — MUST never be committed
 .env
+.auth.json
 .cookies
 
 # Python
